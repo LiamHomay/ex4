@@ -10,18 +10,18 @@ Assignment: ex4
 #define SIZE 5
 #define MAX 20
 
-void task1RobotPaths();
-void task2HumanPyramid();
-void task3ParenthesisValidator();
-void task4QueensBattle();
+void task1robotPaths();
+void task2humanPyramid();
+void task3parenthesisValidator();
+void task4queensBattle();
 
-int RobotPaths(int column, int row);
-float HumanPyramid(float arr[][SIZE], int size, int row, int column);
-int ParenthesisValidator(char c);
-int QueensBattle(char board[][MAX], int n);
+int robotPaths(int column, int row);
+float humanPyramid(float arr[][SIZE], int size, int row, int column);
+char parenthesisValidator(char charToCheck);
+int queensBattle(char board[][MAX], int n);
 
 char getMatchingClosing(char open);
-int isOpening(char c) ;
+int isOpening(char c);
 int isClosing(char c);
 
 int abs(int x);
@@ -38,19 +38,19 @@ int main() {
                "4. Queens Battle\n"
                "5. Exit\n");
 
-        if (scanf("%d", &task)) { // To make sure the input is an integer
+        if (scanf("%d", &task)) {
             switch (task) {
                 case 1:
-                    task1RobotPaths();
+                    task1robotPaths();
                     break;
                 case 2:
-                    task2HumanPyramid();
+                    task2humanPyramid();
                     break;
                 case 3:
-                    task3ParenthesisValidator();
+                    task3parenthesisValidator();
                     break;
                 case 4:
-                    task4QueensBattle();
+                    task4queensBattle();
                     break;
                 case 5:
                     printf("Goodbye!\n");
@@ -60,28 +60,27 @@ int main() {
                     break;
             }
         } else {
-            scanf("%*s"); // To discard the invalid input
+            scanf("%*s");
             printf("Please choose a task number from the list.\n");
         }
     } while (task != 5);
 }
 
-void task1RobotPaths() {
+void task1robotPaths() {
     int column, row;
     printf("Please enter the coordinates of the robot (column, row):\n");
     scanf("%d %d", &column, &row);
 
-    printf("The total number of paths the robot can take to reach home is: %d\n", RobotPaths(column, row));
+    printf("The total number of paths the robot can take to reach home is: %d\n", robotPaths(column, row));
 }
 
-int RobotPaths(int column, int row) {
+int robotPaths(int column, int row) {
     if (column < 0 || row < 0) return 0;
     if (column == 0 && row == 0) return 1;
-    return RobotPaths(column - 1, row) + RobotPaths(column, row - 1);
+    return robotPaths(column - 1, row) + robotPaths(column, row - 1);
 }
 
-
-void task2HumanPyramid() {
+void task2humanPyramid() {
     float arr[SIZE][SIZE];
     printf("Please enter the weights of the cheerleaders:\n");
     for (int i = 0; i < SIZE; i++) {
@@ -89,7 +88,7 @@ void task2HumanPyramid() {
             scanf("%f", &arr[i][j]);
             if (arr[i][j] < 0) {
                 printf("Negative weights are not supported.\n");
-                return;//Back to the menu
+                return;
             }
         }
     }
@@ -97,55 +96,64 @@ void task2HumanPyramid() {
     printf("\nThe total weight on each cheerleader is:\n");
     for (int i = 0; i < SIZE; i++) {
         for (int j = 0; j <= i; j++) {
-            printf("%.2f", HumanPyramid(arr, SIZE, i, j));
-            printf(" ");
+            printf("%.2f ", humanPyramid(arr, SIZE, i, j));
         }
         printf("\n");
     }
 }
 
-float HumanPyramid(float arr[][SIZE], int size, int row, int column) {
+float humanPyramid(float arr[][SIZE], int size, int row, int column) {
     if (column < 0 || row < 0 || column > row) return 0;
 
-    float left = 0.5 * HumanPyramid(arr, size, row - 1, column - 1);
-    float right = 0.5 * HumanPyramid(arr, size, row - 1, column);
+    float left = 0.5 * humanPyramid(arr, size, row - 1, column - 1);
+    float right = 0.5 * humanPyramid(arr, size, row - 1, column);
     return arr[row][column] + left + right;
 }
 
-
-void task3ParenthesisValidator() {
+void task3parenthesisValidator() {
     char first;
     printf("Please enter a term for validation:\n");
     scanf(" %c", &first);
-    if (ParenthesisValidator(first))
+    char isBalanced = parenthesisValidator(first);
+    if (isBalanced == '\0')
         printf("The parentheses are balanced correctly.\n");
     else
         printf("The parentheses are not balanced correctly.\n");
-
+    while (getchar() != '\n');
 }
 
-int ParenthesisValidator(char c) {
+char parenthesisValidator(char charToCheck) {
+    if (charToCheck == '(' || charToCheck == '{' || charToCheck == '[' || charToCheck == '<') {
+        char nextCharToCheck;
+        scanf(" %c", &nextCharToCheck);
+        nextCharToCheck = parenthesisValidator(nextCharToCheck);
+        if (nextCharToCheck == '\0') {
+            return '\0';
+        }
 
-    while (!isOpening(c) && !isClosing(c) && c != '\n') {
-        scanf(" %c", &c);
+        if (charToCheck == '(' && nextCharToCheck != ')'
+         || charToCheck == '{' && nextCharToCheck != '}'
+         || charToCheck == '[' && nextCharToCheck != ']'
+         || charToCheck == '<' && nextCharToCheck != '>') {
+            if (nextCharToCheck != '\n' && nextCharToCheck != '\0') {
+                scanf("%*[^\n]");
+                scanf("%*c");
+            }
+            return '\0';
+        }
     }
 
-    if (c == '\n') return 1;
+    if (charToCheck == ')' || charToCheck == '}' || charToCheck == ']' || charToCheck == '>') {
+        return charToCheck;
+    }
 
-    if (isClosing(c)) return 0;
+    if (charToCheck == '\n' || charToCheck == '\0') {
+        return charToCheck;
+    }
 
-    char expectedClose = getMatchingClosing(c);
-    char next;
-    scanf(" %c", &next);
-
-    if (!ParenthesisValidator(next))
-        return 0;
-
-    scanf(" %c", &next);
-    if (next != expectedClose)
-        return 0;
-
-    return ParenthesisValidator(next);
+    char nextCharToCheck;
+    scanf(" %c", &nextCharToCheck);
+    return parenthesisValidator(nextCharToCheck);
 }
 
 char getMatchingClosing(char open) {
@@ -164,9 +172,7 @@ int isClosing(char c) {
     return c == ')' || c == ']' || c == '}' || c == '>';
 }
 
-
-
-void task4QueensBattle() {
+void task4queensBattle() {
     char arr[MAX][MAX] = {0};
     int n;
 
@@ -180,37 +186,33 @@ void task4QueensBattle() {
 
     while (i < n) {
         scanf(" %c", &ch);
-        arr[i][j] = ch;
-        j++;
+        arr[i][j++] = ch;
         if (j == n) {
             i++;
             j = 0;
         }
     }
 
-    if (!QueensBattle(arr, n))
+    if (!queensBattle(arr, n))
         printf("This puzzle cannot be solved.\n");
 }
 
-int QueensBattle(char board[][MAX], int n) {
-    int queens[MAX][2]; // שורה ועמודה לכל מלכה
+int queensBattle(char board[][MAX], int n) {
+    int queens[MAX][2];
     int colUsed[MAX] = {0};
     char usedRegions[256] = {0};
 
     if (solve(0, n, board, usedRegions, queens, colUsed)) {
-        // מלא את הלוח ב־'*'
         for (int i = 0; i < n; i++)
             for (int j = 0; j < n; j++)
                 board[i][j] = '*';
 
-        // מקם את המלכות
         for (int i = 0; i < n; i++) {
             int row = queens[i][0];
             int col = queens[i][1];
             board[row][col] = 'X';
         }
 
-        // הדפסה
         printf("Solution:\n");
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
@@ -218,7 +220,6 @@ int QueensBattle(char board[][MAX], int n) {
             }
             printf("\n");
         }
-
         return 1;
     }
     return 0;
@@ -235,7 +236,6 @@ int isSafe(int row, int col, int n, int queens[][2]) {
         if (qCol == col || qRow - qCol == row - col || qRow + qCol == row + col)
             return 0;
 
-        // צמודים במרחק 1
         if (abs(qRow - row) <= 1 && abs(qCol - col) <= 1)
             return 0;
     }
@@ -257,15 +257,9 @@ int solve(int row, int n, char board[][MAX], char usedRegions[256], int queens[]
             if (solve(row + 1, n, board, usedRegions, queens, colUsed))
                 return 1;
 
-            // חזרה לאחור
             colUsed[col] = 0;
             usedRegions[(unsigned char)region] = 0;
         }
     }
     return 0;
 }
-
-
-
-
-
