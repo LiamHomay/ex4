@@ -27,10 +27,10 @@ char getMatchingClose(char open);
 
 //functions for task4
 int queensBattle(char board[][MAX], int n);
-int solve(int row, int n, char board[][MAX], char solution[][MAX], int cols[], int diag1[], int diag2[], int regions[]);
-int isSafe(int row, int col, int n, int cols[], int diag1[], int diag2[], int regions[], char board[][MAX]);
-int tryColumn(int row, int col, int n, char board[][MAX], char solution[][MAX],
-              int cols[], int diag1[], int diag2[], int regions[]);
+int solve(int row, int n, char board[][MAX], char solution[][MAX], int usedCols[], int usedRegions[256]);
+int isSafe(int x, int y, char solution[][MAX], int n);
+int tryCols(int row, int col, int n, char board[][MAX], char solution[][MAX], int usedCols[], int usedRegions[256]);
+
 
 
 int main() {
@@ -120,10 +120,10 @@ float humanPyramid(float arr[][SIZE], int size, int row, int column) {
     if (column < 0 || row < 0 || column > row) return 0;
 
     // Calculate weight from person above-left and above-right (half of their total weight)
-    float left = 0.5 * humanPyramid(arr, size, row - 1, column - 1);
-    float right = 0.5 * humanPyramid(arr, size, row - 1, column);
+    float left =  0.5 * humanPyramid(arr, size, row - 1, column - 1);
+    float right =  0.5 * humanPyramid(arr, size, row - 1, column);
     // Return own weight plus weight from above
-    return arr[row][column] + left + right;
+    return arr[row][column] + left + right + 0.00001;//for making 2.4999999 round to 3
 }
 
 // Function to handle parenthesis validation interface
@@ -151,7 +151,7 @@ char parenthesisValidator(char c) {
         if (next != getMatchingClose(c)) {
             if (next != '\n') {
                 scanf("%*[^\n]");
-                scanf("*%c");
+                scanf("%*c");
             }
             return '\0';
         }
@@ -191,85 +191,40 @@ char getMatchingClose(char open) {
 }
 
 
+void task4queensBattle() {
+    char arr[MAX][MAX];
+    int n;
 
+    printf("Please enter the board dimensions:\n");
+    scanf("%d", &n);
 
+    printf("Please enter a %d*%d puzzle board:\n", n, n);
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++)
+            scanf(" %c", &arr[i][j]);
 
-
-
-
-
-
-
-
-
-
-
-
-
-// פונקציית בדיקה אם מותר להציב מלכה (ללא אלכסונים משותפים)
-int isSafe(int row, int col, int n,
-           int cols[], int diag1[], int diag2[], int regions[], char board[][MAX]) {
-    unsigned char regionChar = board[row][col];
-
-    return !cols[col] && !diag1[row - col + n - 1] && !diag2[row + col] && !regions[regionChar];
+    queensBattle(arr, n);
 }
 
-// רקורסיה פנימית – ניסוי הצבת מלכה בכל עמודה בשורה row
-int tryColumn(int row, int col, int n, char board[][MAX], char solution[][MAX],
-              int cols[], int diag1[], int diag2[], int regions[]) {
-    if (col == n)
-        return 0;
-
-    unsigned char regionChar = board[row][col];
-    if (isSafe(row, col, n, cols, diag1, diag2, regions, board)) {
-        // סמנו
-        cols[col] = 1;
-        diag1[row - col + n - 1] = 1;
-        diag2[row + col] = 1;
-        regions[regionChar] = 1;
-        solution[row][col] = 'X';
-
-        if (solve(row + 1, n, board, solution, cols, diag1, diag2, regions))
-            return 1;
-
-        // בטל
-        cols[col] = 0;
-        diag1[row - col + n - 1] = 0;
-        diag2[row + col] = 0;
-        regions[regionChar] = 0;
-        solution[row][col] = '*';
-    }
-
-    // נסה בעמודה הבאה
-    return tryColumn(row, col + 1, n, board, solution, cols, diag1, diag2, regions);
-}
-
-// פתרון ראשי – שורה אחר שורה
-int solve(int row, int n, char board[][MAX], char solution[][MAX],
-          int cols[], int diag1[], int diag2[], int regions[]) {
-    if (row == n)
-        return 1;
-
-    return tryColumn(row, 0, n, board, solution, cols, diag1, diag2, regions);
-}
-
+// Attempts to solve the Queens Battle puzzle.
+// If a valid configuration is found, it prints the solution and returns 1.
+// Otherwise, it prints that the puzzle is unsolvable and returns 0.
 int queensBattle(char board[][MAX], int n) {
     char solution[MAX][MAX];
-    int cols[MAX] = {0};
-    int diag1[2 * MAX] = {0};
-    int diag2[2 * MAX] = {0};
-    int regions[256] = {0}; // כל תו אפשרי
+    int usedCols[MAX] = {0};         // Tracks which columns already have a queen
+    int usedRegions[256] = {0};      // Tracks which regions are already occupied by a queen
 
+    // Initialize the solution board with '*'
     for (int i = 0; i < n; i++)
         for (int j = 0; j < n; j++)
             solution[i][j] = '*';
 
-
-    if (solve(0, n, board, solution, cols, diag1, diag2, regions)) {
+    // Start solving from the first row
+    if (solve(0, n, board, solution, usedCols, usedRegions)) {
+        printf("Solution:\n");
         for (int i = 0; i < n; i++) {
-            for (int j = 0; j < n; j++) {
+            for (int j = 0; j < n; j++)
                 printf("%c ", solution[i][j]);
-            }
             printf("\n");
         }
         return 1;
@@ -280,17 +235,77 @@ int queensBattle(char board[][MAX], int n) {
     }
 }
 
-void task4queensBattle() {
-    char arr[MAX][MAX];
-    int n;
+// Recursive function that attempts to place a queen in each row
+int solve(int row, int n, char board[][MAX], char solution[][MAX], int usedCols[], int usedRegions[256]) {
+    if (row == n)
+        return 1; // All queens placed successfully
 
-    printf("Please enter the board dimensions:\n");
-    scanf("%d", &n);
-
-    printf("Please enter the %d*%d puzzle board:\n", n, n);
-    for (int i = 0; i < n; i++)
-        for (int j = 0; j < n; j++)
-            scanf(" %c", &arr[i][j]);
-
-    queensBattle(arr, n);
+    return tryCols(row, 0, n, board, solution, usedCols, usedRegions);
 }
+
+// Recursive helper that tries to place a queen in each column of a given row
+int tryCols(int row, int col, int n, char board[][MAX], char solution[][MAX], int usedCols[], int usedRegions[256]) {
+    if (col == n)
+        return 0; // Tried all columns in this row with no success
+
+    char region = board[row][col];
+
+    // Check if the column and region are free, and the placement is safe
+    if (!usedCols[col] && !usedRegions[(int)region] && isSafe(row, col, solution, n)) {
+        // Place the queen
+        solution[row][col] = 'X';
+        usedCols[col] = 1;
+        usedRegions[(int)region] = 1;
+
+        // Recursively try to place the next queen
+        if (solve(row + 1, n, board, solution, usedCols, usedRegions))
+            return 1;
+
+        // Backtrack if the solution didn't work
+        solution[row][col] = '*';
+        usedCols[col] = 0;
+        usedRegions[(int)region] = 0;
+    }
+
+    // Try the next column in the row
+    return tryCols(row, col + 1, n, board, solution, usedCols, usedRegions);
+}
+
+// Checks whether placing a queen at (x, y) is safe
+// Ensures no queen is adjacent to this cell (including diagonals)
+int isSafe(int x, int y, char solution[][MAX], int n) {
+    int a1 = 0, a2 = 0, a3 = 0, a4 = 0, a5 = 0, a6 = 0, a7 = 0, a8 = 0;
+
+    if (x + 1 < n)
+        a1 = solution[x + 1][y] == 'X';
+    if (x - 1 >= 0)
+        a2 = solution[x - 1][y] == 'X';
+    if (y + 1 < n)
+        a3 = solution[x][y + 1] == 'X';
+    if (y - 1 >= 0)
+        a4 = solution[x][y - 1] == 'X';
+    if (x + 1 < n && y + 1 < n)
+        a5 = solution[x + 1][y + 1] == 'X';
+    if (x + 1 < n && y - 1 >= 0)
+        a6 = solution[x + 1][y - 1] == 'X';
+    if (x - 1 >= 0 && y + 1 < n)
+        a7 = solution[x - 1][y + 1] == 'X';
+    if (x - 1 >= 0 && y - 1 >= 0)
+        a8 = solution[x - 1][y - 1] == 'X';
+
+    // Return true if all adjacent cells are safe (no queens around)
+    return !(a1 || a2 || a3 || a4 || a5 || a6 || a7 || a8);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
