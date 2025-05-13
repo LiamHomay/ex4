@@ -17,16 +17,19 @@ void task4queensBattle();
 
 int robotPaths(int column, int row);
 float humanPyramid(float arr[][SIZE], int size, int row, int column);
-char parenthesisValidator(char charToCheck);
+int parenthesisValidator(char expectedClose);
 int queensBattle(char board[][MAX], int n);
 
-char getMatchingClosing(char open);
-int isOpening(char c);
-int isClosing(char c);
+int isOpen(char c);
+int isClose(char c);
+char getMatchingClose(char open);
 
-int abs(int x);
-int isSafe(int row, int col, int n, int queens[][2]);
-int solve(int row, int n, char board[][MAX], char usedRegions[256], int queens[][2], int colUsed[MAX]);
+int queensBattle(char board[][MAX], int n);
+int solve(int row, int n, char board[][MAX], char solution[][MAX], int cols[], int diag1[], int diag2[], int regions[]);
+int isSafe(int row, int col, int n, int cols[], int diag1[], int diag2[], int regions[], char board[][MAX]);
+int tryColumn(int row, int col, int n, char board[][MAX], char solution[][MAX],
+              int cols[], int diag1[], int diag2[], int regions[]);
+
 
 int main() {
     int task = -1;
@@ -37,7 +40,6 @@ int main() {
                "3. Parenthesis Validation\n"
                "4. Queens Battle\n"
                "5. Exit\n");
-
         if (scanf("%d", &task)) {
             switch (task) {
                 case 1:
@@ -110,156 +112,169 @@ float humanPyramid(float arr[][SIZE], int size, int row, int column) {
     return arr[row][column] + left + right;
 }
 
+
 void task3parenthesisValidator() {
-    char first;
     printf("Please enter a term for validation:\n");
-    scanf(" %c", &first);
-    char isBalanced = parenthesisValidator(first);
-    if (isBalanced == '\0')
+
+    // Clear input buffer
+    scanf("%*[ \t\n]");
+    // Start validation with no expected closing character
+    int result = parenthesisValidator('\0');
+
+    if (result)
         printf("The parentheses are balanced correctly.\n");
-    else
+    else {
         printf("The parentheses are not balanced correctly.\n");
-    while (getchar() != '\n');
+    }
 }
 
-char parenthesisValidator(char charToCheck) {
-    if (charToCheck == '(' || charToCheck == '{' || charToCheck == '[' || charToCheck == '<') {
-        char nextCharToCheck;
-        scanf(" %c", &nextCharToCheck);
-        nextCharToCheck = parenthesisValidator(nextCharToCheck);
-        if (nextCharToCheck == '\0') {
-            return '\0';
-        }
-
-        if (charToCheck == '(' && nextCharToCheck != ')'
-         || charToCheck == '{' && nextCharToCheck != '}'
-         || charToCheck == '[' && nextCharToCheck != ']'
-         || charToCheck == '<' && nextCharToCheck != '>') {
-            if (nextCharToCheck != '\n' && nextCharToCheck != '\0') {
-                scanf("%*[^\n]");
-                scanf("%*c");
-            }
-            return '\0';
-        }
-    }
-
-    if (charToCheck == ')' || charToCheck == '}' || charToCheck == ']' || charToCheck == '>') {
-        return charToCheck;
-    }
-
-    if (charToCheck == '\n' || charToCheck == '\0') {
-        return charToCheck;
-    }
-
-    char nextCharToCheck;
-    scanf(" %c", &nextCharToCheck);
-    return parenthesisValidator(nextCharToCheck);
-}
-
-char getMatchingClosing(char open) {
-    if (open == '(') return ')';
-    if (open == '[') return ']';
-    if (open == '{') return '}';
-    if (open == '<') return '>';
-    return 0;
-}
-
-int isOpening(char c) {
+int isOpen(char c) {
     return c == '(' || c == '[' || c == '{' || c == '<';
 }
 
-int isClosing(char c) {
+int isClose(char c) {
     return c == ')' || c == ']' || c == '}' || c == '>';
 }
 
+char getMatchingClose(char open) {
+    switch (open) {
+        case '(': return ')';
+        case '[': return ']';
+        case '{': return '}';
+        case '<': return '>';
+        default: return '\0';
+    }
+}
+
+int parenthesisValidator(char expectedClose) {
+    char c;
+    scanf("%c", &c);
+
+    if (c == '\n') {
+        // End of input - valid only if we're not expecting any closing bracket
+        return expectedClose == '\0';
+    }
+
+    // Skip non-bracket characters
+    if (!isOpen(c) && !isClose(c)) {
+        return parenthesisValidator(expectedClose);
+    }
+
+    if (isOpen(c)) {
+        // Process opening bracket: validate what's inside it
+        char matchingClose = getMatchingClose(c);
+        if (!parenthesisValidator(matchingClose)) {
+            return 0;
+        }
+        // After validating inside this bracket, continue with our original expectedClose
+        return parenthesisValidator(expectedClose);
+    }
+
+    if (isClose(c)) {
+        // Process closing bracket: must match what we're expecting
+        return c == expectedClose;
+    }
+
+    return 1;  // Should never reach here
+}
+
+
+
+
+
+
+
+
+
+// פונקציית בדיקה אם מותר להציב מלכה (ללא אלכסונים משותפים)
+int isSafe(int row, int col, int n,
+           int cols[], int diag1[], int diag2[], int regions[], char board[][MAX]) {
+    unsigned char regionChar = board[row][col];
+
+    return !cols[col] && !diag1[row - col + n - 1] && !diag2[row + col] && !regions[regionChar];
+}
+
+// רקורסיה פנימית – ניסוי הצבת מלכה בכל עמודה בשורה row
+int tryColumn(int row, int col, int n, char board[][MAX], char solution[][MAX],
+              int cols[], int diag1[], int diag2[], int regions[]) {
+    if (col == n)
+        return 0;
+
+    unsigned char regionChar = board[row][col];
+    if (isSafe(row, col, n, cols, diag1, diag2, regions, board)) {
+        // סמנו
+        cols[col] = 1;
+        diag1[row - col + n - 1] = 1;
+        diag2[row + col] = 1;
+        regions[regionChar] = 1;
+        solution[row][col] = 'X';
+
+        if (solve(row + 1, n, board, solution, cols, diag1, diag2, regions))
+            return 1;
+
+        // בטל
+        cols[col] = 0;
+        diag1[row - col + n - 1] = 0;
+        diag2[row + col] = 0;
+        regions[regionChar] = 0;
+        solution[row][col] = '*';
+    }
+
+    // נסה בעמודה הבאה
+    return tryColumn(row, col + 1, n, board, solution, cols, diag1, diag2, regions);
+}
+
+// פתרון ראשי – שורה אחר שורה
+int solve(int row, int n, char board[][MAX], char solution[][MAX],
+          int cols[], int diag1[], int diag2[], int regions[]) {
+    if (row == n)
+        return 1;
+
+    return tryColumn(row, 0, n, board, solution, cols, diag1, diag2, regions);
+}
+
+int queensBattle(char board[][MAX], int n) {
+    char solution[MAX][MAX];
+    int cols[MAX] = {0};
+    int diag1[2 * MAX] = {0};
+    int diag2[2 * MAX] = {0};
+    int regions[256] = {0}; // כל תו אפשרי
+
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++)
+            solution[i][j] = '*';
+
+
+    if (solve(0, n, board, solution, cols, diag1, diag2, regions)) {
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                printf("%c ", solution[i][j]);
+            }
+            printf("\n");
+        }
+        return 1;
+    }
+    else {
+        printf("This puzzle cannot be solved.\n");
+        return 0;
+    }
+}
+
 void task4queensBattle() {
-    char arr[MAX][MAX] = {0};
+    char arr[MAX][MAX];
     int n;
 
     printf("Please enter the board dimensions:\n");
     scanf("%d", &n);
 
     printf("Please enter the %d*%d puzzle board:\n", n, n);
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++)
+            scanf(" %c", &arr[i][j]);
 
-    char ch;
-    int i = 0, j = 0;
-
-    while (i < n) {
-        scanf(" %c", &ch);
-        arr[i][j++] = ch;
-        if (j == n) {
-            i++;
-            j = 0;
-        }
-    }
-
-    if (!queensBattle(arr, n))
-        printf("This puzzle cannot be solved.\n");
+    queensBattle(arr, n);
 }
 
-int queensBattle(char board[][MAX], int n) {
-    int queens[MAX][2];
-    int colUsed[MAX] = {0};
-    char usedRegions[256] = {0};
 
-    if (solve(0, n, board, usedRegions, queens, colUsed)) {
-        for (int i = 0; i < n; i++)
-            for (int j = 0; j < n; j++)
-                board[i][j] = '*';
 
-        for (int i = 0; i < n; i++) {
-            int row = queens[i][0];
-            int col = queens[i][1];
-            board[row][col] = 'X';
-        }
 
-        printf("Solution:\n");
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < n; j++) {
-                printf("%c ", board[i][j]);
-            }
-            printf("\n");
-        }
-        return 1;
-    }
-    return 0;
-}
-
-int abs(int x) {
-    return (x < 0) ? -x : x;
-}
-
-int isSafe(int row, int col, int n, int queens[][2]) {
-    for (int i = 0; i < row; i++) {
-        int qRow = queens[i][0];
-        int qCol = queens[i][1];
-        if (qCol == col || qRow - qCol == row - col || qRow + qCol == row + col)
-            return 0;
-
-        if (abs(qRow - row) <= 1 && abs(qCol - col) <= 1)
-            return 0;
-    }
-    return 1;
-}
-
-int solve(int row, int n, char board[][MAX], char usedRegions[256], int queens[][2], int colUsed[MAX]) {
-    if (row == n)
-        return 1;
-
-    for (int col = 0; col < n; col++) {
-        char region = board[row][col];
-        if (!colUsed[col] && !usedRegions[(unsigned char)region] && isSafe(row, col, n, queens)) {
-            queens[row][0] = row;
-            queens[row][1] = col;
-            colUsed[col] = 1;
-            usedRegions[(unsigned char)region] = 1;
-
-            if (solve(row + 1, n, board, usedRegions, queens, colUsed))
-                return 1;
-
-            colUsed[col] = 0;
-            usedRegions[(unsigned char)region] = 0;
-        }
-    }
-    return 0;
-}
