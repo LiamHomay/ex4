@@ -7,23 +7,25 @@ Assignment: ex4
 #include <stdio.h>
 #include <string.h>
 
-#define SIZE 5
-#define MAX 20
+#define SIZE 5// size of the cheerleaders array
+#define MAX 20// max size of the board
 
 void task1robotPaths();
 void task2humanPyramid();
 void task3parenthesisValidator();
 void task4queensBattle();
 
-int robotPaths(int column, int row);
-float humanPyramid(float arr[][SIZE], int size, int row, int column);
-int parenthesisValidator(char expectedClose);
-int queensBattle(char board[][MAX], int n);
+int robotPaths(int column, int row);// hepler for task1
+float humanPyramid(float arr[][SIZE], int size, int row, int column);// helper for task2
+char parenthesisValidator(char charToCheck);// helper for task3
+int queensBattle(char board[][MAX], int n);// helper for task4
 
+//functions for task3
 int isOpen(char c);
 int isClose(char c);
 char getMatchingClose(char open);
 
+//functions for task4
 int queensBattle(char board[][MAX], int n);
 int solve(int row, int n, char board[][MAX], char solution[][MAX], int cols[], int diag1[], int diag2[], int regions[]);
 int isSafe(int row, int col, int n, int cols[], int diag1[], int diag2[], int regions[], char board[][MAX]);
@@ -62,32 +64,39 @@ int main() {
                     break;
             }
         } else {
-            scanf("%*s");
+            scanf("%*s");// Clear invalid input from buffer
             printf("Please choose a task number from the list.\n");
         }
     } while (task != 5);
 }
 
+// Function to handle the robot paths task interface
 void task1robotPaths() {
     int column, row;
     printf("Please enter the coordinates of the robot (column, row):\n");
     scanf("%d %d", &column, &row);
-
     printf("The total number of paths the robot can take to reach home is: %d\n", robotPaths(column, row));
 }
 
+// Recursive function to calculate number of possible paths to origin (0,0)
+// Robot can only move left or down
 int robotPaths(int column, int row) {
-    if (column < 0 || row < 0) return 0;
-    if (column == 0 && row == 0) return 1;
+    // Base cases: if position is invalid or reached destination
+    if (column < 0 || row < 0) return 0;  // Invalid position
+    if (column == 0 && row == 0) return 1; // Reached destination
+    // Recursive case: sum of paths from left and from down
     return robotPaths(column - 1, row) + robotPaths(column, row - 1);
 }
 
+// Function to handle the human pyramid weight calculation interface
 void task2humanPyramid() {
     float arr[SIZE][SIZE];
     printf("Please enter the weights of the cheerleaders:\n");
+    // Input weights for pyramid structure
     for (int i = 0; i < SIZE; i++) {
         for (int j = 0; j <= i; j++) {
             scanf("%f", &arr[i][j]);
+            // Check for negative weights
             if (arr[i][j] < 0) {
                 printf("Negative weights are not supported.\n");
                 return;
@@ -95,6 +104,7 @@ void task2humanPyramid() {
         }
     }
 
+    // Calculate and display total weight on each person
     printf("\nThe total weight on each cheerleader is:\n");
     for (int i = 0; i < SIZE; i++) {
         for (int j = 0; j <= i; j++) {
@@ -104,38 +114,72 @@ void task2humanPyramid() {
     }
 }
 
+// Recursive function to calculate total weight on each person in pyramid
 float humanPyramid(float arr[][SIZE], int size, int row, int column) {
+    // Base case: invalid position
     if (column < 0 || row < 0 || column > row) return 0;
 
+    // Calculate weight from person above-left and above-right (half of their total weight)
     float left = 0.5 * humanPyramid(arr, size, row - 1, column - 1);
     float right = 0.5 * humanPyramid(arr, size, row - 1, column);
+    // Return own weight plus weight from above
     return arr[row][column] + left + right;
 }
 
-
+// Function to handle parenthesis validation interface
 void task3parenthesisValidator() {
     printf("Please enter a term for validation:\n");
-
-    // Clear input buffer
-    scanf("%*[ \t\n]");
-    // Start validation with no expected closing character
-    int result = parenthesisValidator('\0');
-
-    if (result)
+    char first;
+    scanf(" %c", &first);
+    // Check if parentheses are balanced
+    if (parenthesisValidator(first) == '\n')
         printf("The parentheses are balanced correctly.\n");
-    else {
+    else
         printf("The parentheses are not balanced correctly.\n");
-    }
 }
 
+// Recursive function to validate matching parentheses
+char parenthesisValidator(char c) {
+    // If current character is an opening bracket
+    if (isOpen(c)) {
+        char next;
+        scanf("%c", &next);
+        next = parenthesisValidator(next);
+        if (next == '\0') return '\0';
+
+        // Check if closing bracket matches
+        if (next != getMatchingClose(c)) {
+            if (next != '\n') {
+                scanf("%*[^\n]");
+                scanf("*%c");
+            }
+            return '\0';
+        }
+    }
+
+    // If current character is a closing bracket
+    if (isClose(c)) return c;
+
+    // If reached end of input
+    if (c == '\n' || c == '\0') return c;
+
+    // Continue with next character
+    char next;
+    scanf("%c", &next);
+    return parenthesisValidator(next);
+}
+
+// Helper function to check if character is an opening bracket
 int isOpen(char c) {
     return c == '(' || c == '[' || c == '{' || c == '<';
 }
 
+// Helper function to check if character is a closing bracket
 int isClose(char c) {
     return c == ')' || c == ']' || c == '}' || c == '>';
 }
 
+// Helper function to get matching closing bracket for an opening bracket
 char getMatchingClose(char open) {
     switch (open) {
         case '(': return ')';
@@ -146,37 +190,13 @@ char getMatchingClose(char open) {
     }
 }
 
-int parenthesisValidator(char expectedClose) {
-    char c;
-    scanf("%c", &c);
 
-    if (c == '\n') {
-        // End of input - valid only if we're not expecting any closing bracket
-        return expectedClose == '\0';
-    }
 
-    // Skip non-bracket characters
-    if (!isOpen(c) && !isClose(c)) {
-        return parenthesisValidator(expectedClose);
-    }
 
-    if (isOpen(c)) {
-        // Process opening bracket: validate what's inside it
-        char matchingClose = getMatchingClose(c);
-        if (!parenthesisValidator(matchingClose)) {
-            return 0;
-        }
-        // After validating inside this bracket, continue with our original expectedClose
-        return parenthesisValidator(expectedClose);
-    }
 
-    if (isClose(c)) {
-        // Process closing bracket: must match what we're expecting
-        return c == expectedClose;
-    }
 
-    return 1;  // Should never reach here
-}
+
+
 
 
 
@@ -274,7 +294,3 @@ void task4queensBattle() {
 
     queensBattle(arr, n);
 }
-
-
-
-
